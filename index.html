@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4f46e5">
+  <title>বাকি খাতা — বাকি হিসাব ও আদায়</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ==================== লগইন স্ক্রিন ==================== -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">📒</div>
+      <h1>বাকি খাতা</h1>
+      <p class="auth-subtitle">বাকি হিসাব ও আদায় ব্যবস্থাপনা</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-authtab="login">লগইন</button>
+        <button class="auth-tab" data-authtab="signup">নতুন অ্যাকাউন্ট</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <input type="email" id="loginEmail" placeholder="ইমেইল" required>
+        <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড" required minlength="6">
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">লগইন করুন</button>
+        <p class="forgot-link">
+          <a href="#" id="forgotPasswordLink">পাসওয়ার্ড ভুলে গেছেন?</a>
+        </p>
+        <p class="auth-msg" id="loginMsg"></p>
+      </form>
+
+      <form id="signupForm" class="auth-form hidden">
+        <input type="text" id="signupShop" placeholder="দোকানের নাম" required>
+        <input type="email" id="signupEmail" placeholder="ইমেইল" required>
+        <input type="password" id="signupPassword" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required minlength="6">
+        <input type="password" id="signupAdminKey" placeholder="🔑 অ্যাডমিন কী (ঐচ্ছিক)">
+        <small class="hint">শুধু অ্যাডমিন তৈরি করতে চাইলে কী দিন</small>
+        <button type="submit" class="btn btn-primary btn-block" id="signupBtn">অ্যাকাউন্ট তৈরি করুন</button>
+        <p class="auth-msg" id="signupMsg"></p>
+      </form>
+
+      <p class="auth-note">🔒 আপনার ডেটা শুধু আপনার অ্যাকাউন্টেই সংরক্ষিত থাকবে</p>
+    </div>
+  </div>
+
+  <!-- ==================== মেইন অ্যাপ ==================== -->
+  <div id="mainApp" class="hidden">
+
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-row">
+          <div>
+            <h1>📒 বাকি খাতা</h1>
+            <p class="subtitle" id="shopName">বাকি হিসাব ও আদায়</p>
+            <span id="roleBadge" class="role-badge hidden">👑 অ্যাডমিন</span>
+          </div>
+          <button id="logoutBtn" class="btn-logout" title="লগআউট">🚪</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+
+      <div id="syncStatus" class="sync-status hidden">
+        <span class="sync-dot"></span>
+        <span id="syncText">সিঙ্ক হচ্ছে...</span>
+      </div>
+
+      <!-- ড্যাশবোর্ড -->
+      <section class="dashboard">
+        <div class="stat-card stat-due">
+          <div class="stat-icon">💰</div>
+          <div class="stat-body">
+            <span class="stat-label">মোট বাকি</span>
+            <span class="stat-value" id="totalDue">৳ ০</span>
+          </div>
+        </div>
+        <div class="stat-card stat-paid">
+          <div class="stat-icon">✅</div>
+          <div class="stat-body">
+            <span class="stat-label">আজকের আদায়</span>
+            <span class="stat-value" id="todayCollected">৳ ০</span>
+          </div>
+        </div>
+        <div class="stat-card stat-customer">
+          <div class="stat-icon">👥</div>
+          <div class="stat-body">
+            <span class="stat-label">মোট গ্রাহক</span>
+            <span class="stat-value" id="totalCustomers">০</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ট্যাব -->
+      <nav class="tabs">
+        <button class="tab active" data-tab="customers">👥 গ্রাহক</button>
+        <button class="tab" data-tab="stock">📦 স্টক</button>
+        <button class="tab" data-tab="reports">📊 রিপোর্ট</button>
+        <button class="tab" data-tab="backup">💾 ব্যাকআপ</button>
+        <button class="tab" data-tab="subscription">🎫 সাবস্ক্রিপশন</button>
+        <button class="tab admin-only hidden" data-tab="admin">👑 অ্যাডমিন</button>
+      </nav>
+
+      <!-- ========== গ্রাহক ট্যাব ========== -->
+      <div id="tab-customers" class="tab-content active">
+        <section class="card">
+          <h2>➕ নতুন গ্রাহক</h2>
+          <form id="customerForm" class="form-row">
+            <input type="text" id="customerName" placeholder="গ্রাহকের নাম *" required>
+            <input type="tel" id="customerPhone" placeholder="মোবাইল নম্বর">
+            <button type="submit" class="btn btn-primary">যোগ করুন</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="list-header">
+            <h2>📋 গ্রাহক তালিকা</h2>
+            <input type="text" id="searchBox" class="search-input" placeholder="🔍 নাম দিয়ে খুঁজুন...">
+          </div>
+          <div id="customers" class="customer-list"></div>
+          <div id="emptyState" class="empty-state">
+            <p>🙁 এখনো কোনো গ্রাহক নেই</p>
+            <small>উপরের ফর্ম থেকে প্রথম গ্রাহক যোগ করুন</small>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== স্টক ট্যাব ========== -->
+      <div id="tab-stock" class="tab-content">
+        <section class="card">
+          <h2>📦 নতুন পণ্য যোগ করুন</h2>
+          <form id="productForm" class="form-row">
+            <input type="text" id="prodName" placeholder="পণ্যের নাম *" required>
+            <input type="text" id="prodBarcode" placeholder="বারকোড (ঐচ্ছিক)">
+            <input type="number" id="prodPrice" placeholder="বিক্রয় মূল্য (৳)" required min="0">
+            <input type="number" id="prodStock" placeholder="স্টক পরিমাণ" required min="0">
+            <button type="submit" class="btn btn-primary">যোগ করুন</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>📸 বারকোড / QR স্ক্যানার</h2>
+          <div class="scanner-actions">
+            <button id="startScan" class="btn btn-primary">📷 স্ক্যান শুরু</button>
+            <button id="stopScan" class="btn btn-danger hidden">⏹️ বন্ধ করুন</button>
+          </div>
+          <div id="scannerContainer" class="scanner-container hidden"></div>
+          <div id="scanResult" class="scan-result hidden">
+            <h3>📋 স্ক্যান ফলাফল</h3>
+            <p><strong>কোড:</strong> <span id="scanCode">—</span></p>
+            <p><strong>ধরন:</strong> <span id="scanType">—</span></p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="list-header">
+            <h2>📋 পণ্য তালিকা</h2>
+            <input type="text" id="productSearch" class="search-input" placeholder="🔍 পণ্য খুঁজুন...">
+          </div>
+          <div id="products" class="product-list"></div>
+          <div id="productEmpty" class="empty-state show">
+            <p>📦 এখনো কোনো পণ্য নেই</p>
+            <small>উপরের ফর্ম থেকে পণ্য যোগ করুন</small>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>📊 স্টক সামারি</h2>
+          <div class="report-summary">
+            <div class="summary-item">মোট পণ্য: <strong id="totalProducts">০</strong></div>
+            <div class="summary-item">মোট স্টক মূল্য: <strong id="totalStockValue">৳ ০</strong></div>
+            <div class="summary-item">কম স্টক (৫ এর নিচে): <strong id="lowStockCount" style="color:#ef4444;">০</strong></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>🖨️ থার্মাল প্রিন্টার</h2>
+          <div class="printer-status" id="printerStatus">
+            <span class="printer-dot"></span>
+            <span id="printerStatusText">প্রিন্টার সংযুক্ত নেই</span>
+          </div>
+          <div class="printer-actions">
+            <button id="connectPrinter" class="btn btn-primary">🔗 প্রিন্টার সংযুক্ত করুন</button>
+            <button id="disconnectPrinter" class="btn btn-danger hidden">🔌 বিচ্ছিন্ন করুন</button>
+            <button id="testPrint" class="btn btn-success hidden">🖨️ টেস্ট প্রিন্ট</button>
+          </div>
+          <div class="printer-info">
+            <p>📌 <strong>সাপোর্টেড:</strong> 58mm / 80mm Bluetooth থার্মাল প্রিন্টার</p>
+            <p>📌 Chrome/Edge-এ Web Bluetooth API কাজ করে</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== রিপোর্ট ট্যাব ========== -->
+      <div id="tab-reports" class="tab-content">
+        <section class="card">
+          <h2>📊 ভিজুয়াল রিপোর্ট</h2>
+          <div class="chart-tabs">
+            <button class="chart-tab active" data-chart="monthly">মাসিক</button>
+            <button class="chart-tab" data-chart="daily">দৈনিক (৭ দিন)</button>
+            <button class="chart-tab" data-chart="top">সর্বোচ্চ বাকি</button>
+          </div>
+          <div class="chart-container">
+            <canvas id="myChart"></canvas>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>📊 রিপোর্ট</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>শুরুর তারিখ</label>
+              <input type="date" id="fromDate">
+            </div>
+            <div class="form-group">
+              <label>শেষ তারিখ</label>
+              <input type="date" id="toDate">
+            </div>
+            <button id="filterReport" class="btn btn-primary">দেখুন</button>
+            <button id="exportCSV" class="btn btn-success">⬇️ CSV</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>📈 ফলাফল</h2>
+          <div id="reportSummary" class="report-summary"></div>
+          <div class="table-wrapper">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>তারিখ</th><th>গ্রাহক</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th>
+                </tr>
+              </thead>
+              <tbody id="reportBody">
+                <tr><td colspan="5" class="text-center">রিপোর্ট দেখতে ফিল্টার করুন</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== ব্যাকআপ ট্যাব ========== -->
+      <div id="tab-backup" class="tab-content">
+        <section class="card">
+          <h2>💾 ব্যাকআপ ও পুনরুদ্ধার</h2>
+          <p class="backup-note">নিয়মিত ব্যাকআপ নিলে ডেটা হারানোর ভয় নেই।</p>
+
+          <div class="backup-actions">
+            <button id="downloadBackup" class="btn btn-primary">⬇️ JSON ডাউনলোড</button>
+            <button id="downloadCSV" class="btn btn-success">📊 সব ডেটা CSV</button>
+            <label class="btn btn-import">
+              📂 ব্যাকআপ ফাইল থেকে পুনরুদ্ধার
+              <input type="file" id="importFile" accept=".json" hidden>
+            </label>
+          </div>
+
+          <div class="backup-info">
+            <h3>📋 ব্যাকআপ বিবরণ</h3>
+            <ul>
+              <li>মোট গ্রাহক: <strong id="backupCustomerCount">০</strong></li>
+              <li>মোট লেনদেন: <strong id="backupTxCount">০</strong></li>
+              <li>সর্বশেষ ব্যাকআপ: <strong id="lastBackup">কখনো হয়নি</strong></li>
+            </ul>
+            <p class="backup-warning">
+              ⚠️ পুনরুদ্ধার করলে বর্তমান ডেটা <strong>মুছে যাবে</strong>। আগে ব্যাকআপ নিন!
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== সাবস্ক্রিপশন ট্যাব ========== -->
+      <div id="tab-subscription" class="tab-content">
+        <section class="card">
+          <h2>🎫 সাবস্ক্রিপশন</h2>
+          <div id="subscriptionStatus" class="subscription-status">
+            <p>লোড হচ্ছে...</p>
+          </div>
+          <div id="subscriptionPlans" class="subscription-plans"></div>
+          <p class="backup-note" style="margin-top:20px;">
+            ℹ️ সাবস্ক্রিপশন কাজ করতে Firebase Stripe Extension ইনস্টল ও কনফিগার করতে হবে।
+            না থাকলে উপরে এরর দেখাবে — অ্যাপের বাকি সব ঠিক চলবে।
+          </p>
+        </section>
+      </div>
+
+      <!-- ========== অ্যাডমিন ট্যাব ========== -->
+      <div id="tab-admin" class="tab-content">
+
+        <section class="card">
+          <h2>📊 সিস্টেম স্ট্যাটিসটিক্স</h2>
+          <div class="admin-stats">
+            <div class="admin-stat admin-stat-blue">
+              <span class="admin-stat-icon">👥</span>
+              <span class="admin-stat-label">মোট ইউজার</span>
+              <span class="admin-stat-value" id="adminTotalUsers">০</span>
+            </div>
+            <div class="admin-stat admin-stat-green">
+              <span class="admin-stat-icon">📒</span>
+              <span class="admin-stat-label">মোট গ্রাহক</span>
+              <span class="admin-stat-value" id="adminTotalCustomers">০</span>
+            </div>
+            <div class="admin-stat admin-stat-red">
+              <span class="admin-stat-icon">💰</span>
+              <span class="admin-stat-label">সিস্টেম মোট বাকি</span>
+              <span class="admin-stat-value" id="adminTotalDue">৳ ০</span>
+            </div>
+            <div class="admin-stat admin-stat-purple">
+              <span class="admin-stat-icon">📦</span>
+              <span class="admin-stat-label">মোট পণ্য</span>
+              <span class="admin-stat-value" id="adminTotalProducts">০</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ইউজার গ্রোথ চার্ট -->
+        <section class="card">
+          <h2>📈 ইউজার গ্রোথ (শেষ ৬ মাস)</h2>
+          <div class="chart-container">
+            <canvas id="adminGrowthChart"></canvas>
+          </div>
+        </section>
+
+        <!-- ইউজার ম্যানেজমেন্ট -->
+        <section class="card">
+          <div class="list-header">
+            <h2>👥 ইউজার ম্যানেজমেন্ট</h2>
+            <input type="text" id="adminUserSearch" class="search-input" placeholder="🔍 দোকান/ইমেইল খুঁজুন...">
+          </div>
+          <div id="adminUsersList" class="admin-users-list"></div>
+          <div id="adminUsersEmpty" class="empty-state show">
+            <p>🙁 কোনো ইউজার নেই</p>
+            <small>গ্রাহকরা সাইনআপ করলে এখানে দেখা যাবে</small>
+          </div>
+        </section>
+
+        <!-- সব গ্রাহক -->
+        <section class="card">
+          <h2>📒 সব দোকানের সব গ্রাহক</h2>
+          <div id="adminAllCustomers" class="admin-all-customers"></div>
+        </section>
+
+        <!-- নতুন অ্যাডমিন -->
+        <section class="card">
+          <h2>🔑 নতুন অ্যাডমিন তৈরি</h2>
+          <p class="backup-note">⚠️ নতুন অ্যাডমিনের ইমেইল আগে Firebase Auth-এ থাকতে হবে (সাইনআপ করা)।</p>
+          <form id="createAdminForm" class="form-row">
+            <input type="email" id="newAdminEmail" placeholder="নতুন অ্যাডমিনের ইমেইল" required>
+            <button type="submit" class="btn btn-primary">অ্যাডমিন বানান</button>
+          </form>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- ==================== মডাল ==================== -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">লেনদেন</h2>
+          <button class="modal-close" id="modalClose">✕</button>
+        </div>
+
+        <div class="modal-summary">
+          <span>বর্তমান বাকি:</span>
+          <strong id="modalDue">৳ ০</strong>
+        </div>
+
+        <form id="transactionForm" class="form-column">
+          <input type="hidden" id="txCustomerId">
+          <div class="form-group">
+            <label>ধরন</label>
+            <select id="txType">
+              <option value="due">🔴 বাকি যোগ</option>
+              <option value="payment">🟢 আদায়</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>পরিমাণ (৳)</label>
+            <input type="number" id="txAmount" required min="1" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>বিবরণ (ঐচ্ছিক)</label>
+            <input type="text" id="txNote" placeholder="যেমন: চাল ১০ কেজি">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">💾 সংরক্ষণ</button>
+        </form>
+
+        <div class="sale-section">
+          <h3>🛒 পণ্য থেকে বিক্রয়</h3>
+          <select id="saleProduct">
+            <option value="">পণ্য নির্বাচন করুন...</option>
+          </select>
+          <div class="form-row">
+            <input type="number" id="saleQty" placeholder="পরিমাণ" min="1" value="1">
+            <button type="button" id="addSale" class="btn btn-primary">বাকিতে যোগ</button>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button type="button" id="reminderBtn" class="btn btn-whatsapp">📱 WhatsApp</button>
+          <button type="button" id="smsBtn" class="btn btn-sms">📞 SMS</button>
+          <button type="button" id="invoiceBtn" class="btn btn-invoice">🖨️ PDF ইনভয়েস</button>
+          <button type="button" id="receiptBtn" class="btn btn-receipt">🧾 থার্মাল রসিদ</button>
+        </div>
+
+        <div class="history-section">
+          <h3>📜 লেনদেনের ইতিহাস</h3>
+          <div id="history" class="history-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
